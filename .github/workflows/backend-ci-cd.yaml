@@ -122,7 +122,7 @@ jobs:
                 "docker rm starttech-api 2>/dev/null || true",
                 
                 "echo Starting new container",
-                "docker run -d --name starttech-api --restart unless-stopped -p 8080:8080 -e DATABASE_URL=${{ env.MONGO_URI }} -e ENV=production ${{ env.DOCKER_IMAGE }}:latest",
+                "docker run -d --name starttech-api --restart unless-stopped -p 8080:8080 -e MONGO_URIL=${{ env.MONGO_URI }} -e ENV=production ${{ env.DOCKER_IMAGE }}:latest",
                 
                 "echo Configuring Nginx to forward traffic to container",
                 "echo \"server { listen 80; location / { proxy_pass http://localhost:8080; } }\" > /etc/nginx/sites-available/backend",
