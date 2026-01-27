@@ -30,9 +30,9 @@ jobs:
         working-directory: frontend
         run: npm install
 
-    #   - name: Run tests
-    #     working-directory: frontend
-    #     run: npm test -- --watchAll=false
+      - name: Fix vulnerabilities
+        working-directory: frontend
+        run: npm audit fix  
 
       - name: Security scan
         working-directory: frontend
