@@ -110,7 +110,7 @@ jobs:
             aws ssm send-command \
               --instance-ids "$INSTANCE_ID" \
               --document-name "AWS-RunShellScript" \
-              --parameters 'commands="$(cat <<'EOF'
+              --parameters commands="$(cat <<'EOF'
             set -e
 
             echo "Logging into Docker Hub"
@@ -172,6 +172,7 @@ jobs:
             echo "Deployment complete"
             EOF
             )"
+            
             echo "✅ Deployed to $INSTANCE_ID"
 
             # Wait 30 seconds before deploying to next instance
