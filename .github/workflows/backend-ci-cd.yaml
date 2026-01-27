@@ -15,7 +15,7 @@ env:
   GO_VERSION: '1.21'
   DOCKER_IMAGE: ${{ secrets.DOCKER_USERNAME }}/starttech-api
   PROJECT_NAME: ${{ secrets.PROJECT_NAME }}
-  DATABASE_URL: ${{ secrets.DATABASE_URL }}
+  MONGO_URI: ${{ secrets.MONGO_URI }}
 
 jobs:
   test:
@@ -122,7 +122,7 @@ jobs:
                 "docker rm starttech-api 2>/dev/null || true",
                 
                 "echo Starting new container",
-                "docker run -d --name starttech-api --restart unless-stopped -p 8080:8080 -e DATABASE_URL=${{ secrets.DATABASE_URL }} -e ENV=production ${{ env.DOCKER_IMAGE }}:latest",
+                "docker run -d --name starttech-api --restart unless-stopped -p 8080:8080 -e DATABASE_URL=${{ env.DATABASE_URL }} -e ENV=production ${{ env.DOCKER_IMAGE }}:latest",
                 
                 "echo Configuring Nginx to forward traffic to container",
                 "echo \"server { listen 80; location / { proxy_pass http://localhost:8080; } }\" > /etc/nginx/sites-available/backend",
