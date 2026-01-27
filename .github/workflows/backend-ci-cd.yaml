@@ -38,13 +38,12 @@ jobs:
         working-directory: backend
         run: go vet ./...
 
-      - name: Install nancy
-        run: |
-          go install github.com/sonatype-nexus-community/nancy@latest
-
-      - name: Vulnerability scan
-        working-directory: backend
-        run: go list -json -deps ./... | nancy sleuth
+      - name: Scan Go dependencies
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: backend
+          severity: HIGH,CRITICAL
 
   # Step 2: Build Docker image and push to Docker Hub
   build:
