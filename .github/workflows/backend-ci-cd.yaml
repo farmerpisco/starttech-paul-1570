@@ -108,12 +108,12 @@ jobs:
               --instance-ids "$INSTANCE_ID" \
               --document-name "AWS-RunShellScript" \
               --parameters 'commands=[
-                "echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin",
+                "echo ${{ env.DOCKER_PASSWORD }} | docker login -u ${{ env.DOCKER_USERNAME }} --password-stdin",
                 "docker pull ${{ env.DOCKER_IMAGE }}:latest",
-                "docker stop muchtodo_app-live 2>/dev/null || true",
-                "docker rm muchtodo_app-live 2>/dev/null || true",
-                "docker network create app-network 2>/dev/null || true",
-                "docker run -d --name muchtodo_app-live --network app-network --restart unless-stopped -p 8080:8080 -e MONGO_URI=${{ secrets.MONGO_URI }} -e DB_NAME=muchtodo-db ${{ env.DOCKER_IMAGE }}:latest",
+                "docker stop starttech-app 2>/dev/null || true",
+                "docker rm starttech-app 2>/dev/null || true",
+                "docker network create muchtodo-app 2>/dev/null || true",
+                "docker run -d --name starttech-app --network muchtodo-app --restart unless-stopped -p 8080:8080 -e MONGO_URI=${{ env.MONGO_URI }} -e DB_NAME=muchtodo-db ${{ env.DOCKER_IMAGE }}:latest",
                 "sudo rm -f /etc/nginx/sites-enabled/default",
                 "echo \"server { listen 80; location / { proxy_pass http://127.0.0.1:8080; } }\" | sudo tee /etc/nginx/sites-available/backend",
                 "sudo ln -sf /etc/nginx/sites-available/backend /etc/nginx/sites-enabled/backend",
