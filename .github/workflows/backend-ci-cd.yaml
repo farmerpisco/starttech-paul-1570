@@ -116,7 +116,7 @@ jobs:
                 "docker stop muchtodo_app-live 2>/dev/null || true",
                 "docker rm muchtodo_app-live 2>/dev/null || true",
                 "docker network create app-network 2>/dev/null || true",
-                "docker run -d --name muchtodo_app-live --network app-network --restart unless-stopped -p 8080:8080 -e MONGO_URI=\"${{ secrets.MONGO_URI }}\" -e DB_NAME=muchtodo-db -e ENV=production ${{ env.DOCKER_IMAGE }}:latest",
+                "docker run -d --name muchtodo_app-live --network muchtodo-app -e MONGO_URI='"'"'mongodb://goappuser:goapppass@mongodb:27017/?authSource=admin'"'"' -e DB_NAME='"'"'muchtodo-db'"'"' -p 8080:8080 thefemipaul/starttech-api:latest",
                 "sleep 5"
               ]' \
             --query 'Command.CommandId' \
