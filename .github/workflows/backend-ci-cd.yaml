@@ -100,36 +100,26 @@ jobs:
       - name: Deploy to each instance
         run: |
           INSTANCES=(${{ steps.instances.outputs.instances }})
-        
+          
           for INSTANCE_ID in "${INSTANCES[@]}"; do
-            echo "Deploying to instance: $INSTANCE_ID"
-        
-            # Deploy application
-            echo "Deploying application container..."
-            COMMAND_ID=$(aws ssm send-command \
+            echo "Deploying to $INSTANCE_ID"
+            
+            aws ssm send-command \
               --instance-ids "$INSTANCE_ID" \
               --document-name "AWS-RunShellScript" \
               --parameters 'commands=[
-                "echo Logging into Docker Hub",
                 "echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin",
                 "docker pull ${{ env.DOCKER_IMAGE }}:latest",
                 "docker stop muchtodo_app-live 2>/dev/null || true",
                 "docker rm muchtodo_app-live 2>/dev/null || true",
                 "docker network create app-network 2>/dev/null || true",
-                "docker run -d --name muchtodo_app-live --network muchtodo-app -e MONGO_URI='"'"'mongodb://goappuser:goapppass@mongodb:27017/?authSource=admin'"'"' -e DB_NAME='"'"'muchtodo-db'"'"' -p 8080:8080 thefemipaul/starttech-api:latest",
-                "sleep 5"
-              ]' \
-
-          # Configure Nginx separately (simpler)
-          NGINX_CMD=$(aws ssm send-command \
-            --instance-ids "$INSTANCE_ID" \
-            --document-name "AWS-RunShellScript" \
-            --parameters 'commands=[
-            "sudo rm -f /etc/nginx/sites-enabled/default",
-            "sudo wget -O /etc/nginx/sites-available/backend https://raw.githubusercontent.com/yourusername/yourrepo/main/.github/nginx/backend.conf || sudo tee /etc/nginx/sites-available/backend > /dev/null <<EOF\nserver { listen 80; location / { proxy_pass http://127.0.0.1:8080; proxy_set_header Host \\$host; } location /health { proxy_pass http://127.0.0.1:8080/health; } }\nEOF",
-            "sudo ln -sf /etc/nginx/sites-available/backend /etc/nginx/sites-enabled/backend",
-            "sudo nginx -t && sudo systemctl reload nginx"
-            ]' \
-        
-          echo "✅ Deployed to $INSTANCE_ID"
-          sleep 30
+                "docker run -d --name muchtodo_app-live --network app-network --restart unless-stopped -p 8080:8080 -e MONGO_URI=${{ secrets.MONGO_URI }} -e DB_NAME=muchtodo-db ${{ env.DOCKER_IMAGE }}:latest",
+                "sudo rm -f /etc/nginx/sites-enabled/default",
+                "echo \"server { listen 80; location / { proxy_pass http://127.0.0.1:8080; } }\" | sudo tee /etc/nginx/sites-available/backend",
+                "sudo ln -sf /etc/nginx/sites-available/backend /etc/nginx/sites-enabled/backend",
+                "sudo systemctl reload nginx"
+              ]'
+            
+            echo "✅ Done: $INSTANCE_ID"
+            sleep 30
+          done
