@@ -38,6 +38,10 @@ jobs:
         working-directory: backend
         run: go vet ./...
 
+      - name: Install nancy
+        run: |
+          go install github.com/sonatype-nexus-community/nancy@latest
+
       - name: Vulnerability scan
         working-directory: backend
         run: go list -json -deps ./... | nancy sleuth
