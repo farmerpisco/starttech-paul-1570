@@ -31,6 +31,11 @@ func LoadConfig(path string) (config Config, err error) {
 
 	viper.AutomaticEnv()
 
+	// Explicitly bind environment variables
+	viper.BindEnv("PORT")
+	viper.BindEnv("MONGO_URI")
+	viper.BindEnv("DB_NAME")
+
 	// Set default values
 	viper.SetDefault("PORT", "8080")
 	viper.SetDefault("ENABLE_CACHE", false)

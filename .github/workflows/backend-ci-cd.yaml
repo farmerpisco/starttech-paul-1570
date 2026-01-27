@@ -1,0 +1,141 @@
+name: Backend CI/CD
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - backend/**
+
+env:
+  AWS_REGION: ${{ var.AWS_REGION }}
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+  DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+  GO_VERSION: '1.21'
+  DOCKER_IMAGE: ${{ secrets.DOCKER_USERNAME }}/starttech-api
+  PROJECT_NAME: ${{ secrets.PROJECT_NAME }}
+  DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - name: Run unit & integration tests
+        working-directory: backend
+        run: go test ./...
+
+      - name: Code quality check
+        working-directory: backend
+        run: go vet ./...
+
+      - name: Vulnerability scan
+        working-directory: backend
+        run: go list -json -deps ./... | nancy sleuth
+
+  # Step 2: Build Docker image and push to Docker Hub
+  build:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Get code from GitHub
+        uses: actions/checkout@v4
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKER_USERNAME }}
+          password: ${{ env.DOCKER_PASSWORD }}
+
+      - name: Build and push to Docker Hub
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.DOCKER_IMAGE }}:${{ github.sha }}
+            ${{ env.DOCKER_IMAGE }}:latest
+
+  deploy:
+    name: Deploy to EC2
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Setup AWS connection
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Find running EC2 instances
+        id: instances
+        run: |
+          # Find all running instances in your Auto Scaling Group
+          INSTANCES=$(aws autoscaling describe-auto-scaling-groups \
+            --auto-scaling-group-names "${{ env.PROJECT_NAME }}-asg" \
+            --query 'AutoScalingGroups[0].Instances[?LifecycleState==`InService`].InstanceId' \
+            --output text)
+          
+          echo "instances=$INSTANCES" >> $GITHUB_OUTPUT
+          echo "Found these instances: $INSTANCES"
+
+      - name: Deploy to each instance
+        run: |
+          # Get the list of instances
+          INSTANCES=(${{ steps.instances.outputs.instances }})
+          
+          # Loop through each instance
+          for INSTANCE_ID in "${INSTANCES[@]}"; do
+            echo "Deploying to instance: $INSTANCE_ID"
+            
+            # Send commands to the EC2 instance
+            aws ssm send-command \
+              --instance-ids "$INSTANCE_ID" \
+              --document-name "AWS-RunShellScript" \
+              --parameters 'commands=[
+                "echo Logging into Docker Hub",
+                "echo ${{ env.DOCKER_PASSWORD }} | docker login -u ${{ env.DOCKER_USERNAME }} --password-stdin",
+                
+                "echo Pulling new Docker image",
+                "docker pull ${{ env.DOCKER_IMAGE }}:latest",
+                
+                "echo Stopping old container if exists",
+                "docker stop starttech-api 2>/dev/null || true",
+                "docker rm starttech-api 2>/dev/null || true",
+                
+                "echo Starting new container",
+                "docker run -d --name starttech-api --restart unless-stopped -p 8080:8080 -e DATABASE_URL=${{ secrets.DATABASE_URL }} -e ENV=production ${{ env.DOCKER_IMAGE }}:latest",
+                
+                "echo Configuring Nginx to forward traffic to container",
+                "echo \"server { listen 80; location / { proxy_pass http://localhost:8080; } }\" > /etc/nginx/sites-available/backend",
+                "ln -sf /etc/nginx/sites-available/backend /etc/nginx/sites-enabled/backend",
+                "rm -f /etc/nginx/sites-enabled/default",
+                "nginx -t && systemctl reload nginx",
+                
+                "echo Deployment complete!"
+              ]' \
+              --output text
+            
+            echo "✅ Deployed to $INSTANCE_ID"
+
+            # Wait 30 seconds before deploying to next instance
+            sleep 30
+          done
+          
+          echo "✅ All deployments complete!"            
+      
