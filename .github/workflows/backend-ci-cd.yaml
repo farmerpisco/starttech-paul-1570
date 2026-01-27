@@ -126,7 +126,7 @@ jobs:
               "docker network inspect app-network >/dev/null 2>&1 || docker network create app-network",
             
               "echo Starting new container",
-              "docker run -d --name muchtodo_app-live --network muchtodo-app -e MONGO_URI="mongodb://goappuser:goapppass@mongodb:27017/?authSource=admin" -e DB_NAME="muchtodo-db" -p 8080:8080 thefemipaul/starttech-api:latest",
+              "docker run -d --name muchtodo_app-live --network muchtodo-app -e MONGO_URI='"'"'mongodb://goappuser:goapppass@mongodb:27017/?authSource=admin'"'"' -e DB_NAME='"'"'muchtodo-db'"'"' -p 8080:8080 thefemipaul/starttech-api:latest",
             
               "echo Configuring Nginx",
               "sudo rm -f /etc/nginx/sites-enabled/default",
