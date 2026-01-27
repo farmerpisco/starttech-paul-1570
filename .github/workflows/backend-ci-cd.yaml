@@ -133,4 +133,3 @@ jobs:
         
           echo "✅ Deployed to $INSTANCE_ID"
           sleep 30
-          done

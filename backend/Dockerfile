@@ -21,7 +21,7 @@ COPY . .
 # Build the app
 RUN go build -o /app/muchtodo ./cmd/api
 
-## Stage two: Runtime stage
+# Stage two: Runtime stage
 FROM alpine:3.23
 
 # Created environment variable for both group and user
