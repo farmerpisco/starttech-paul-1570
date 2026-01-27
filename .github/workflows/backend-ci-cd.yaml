@@ -122,7 +122,7 @@ jobs:
                 "docker rm starttech-api 2>/dev/null || true",
                 
                 "echo Starting new container",
-                "docker run -d --name starttech-api --network muchtodo-app --restart unless-stopped -p 8080:8080 -e MONGO_URIL=${{ env.MONGO_URI }} -e ENV=production ${{ env.DOCKER_IMAGE }}:latest",
+                "docker run -d --name starttech-api --network muchtodo-app --restart unless-stopped -p 8080:8080 -e MONGO_URI=${{ env.MONGO_URI }} -e ENV=production ${{ env.DOCKER_IMAGE }}:latest",
                 
                 "echo Configuring Nginx to forward traffic to container",
                 "sudo bash -c \"cat > /etc/nginx/sites-available/backend << EOF
