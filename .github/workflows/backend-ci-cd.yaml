@@ -16,7 +16,7 @@ env:
   DOCKER_IMAGE: ${{ secrets.DOCKER_USERNAME }}/starttech-api
   PROJECT_NAME: ${{ secrets.PROJECT_NAME }}
   MONGO_URI: ${{ secrets.MONGO_URI }}
-  DB_NAME: muchtodo-db
+  DB_NAME: ${{ secrets.PROJECT_NAME }}
 
 jobs:
   test:
@@ -122,11 +122,11 @@ jobs:
                 "docker stop starttech-app 2>/dev/null || true",
                 "docker rm starttech-app 2>/dev/null || true",
                 
-                "docker network create muchtodo-app 2>/dev/null || true",
+                "docker network create starttech-app 2>/dev/null || true",
 
                 "docker run -d \
                 --name starttech-app \
-                --network muchtodo-app \
+                --network starttech-app \
                 --restart unless-stopped \
                 -p 8080:8080 \
                 -e MONGO_URI=${{ env.MONGO_URI }} \
