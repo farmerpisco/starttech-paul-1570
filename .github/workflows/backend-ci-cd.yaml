@@ -122,7 +122,7 @@ jobs:
                 "docker stop starttech-app 2>/dev/null || true",
                 "docker rm starttech-app 2>/dev/null || true",
                 
-                "docker network inspect starttech-app >/dev/null 2>&1 || true',
+                "docker network inspect starttech-app >/dev/null 2>&1 || true",
                 "docker network create starttech-app",
 
                 "docker run -d \
