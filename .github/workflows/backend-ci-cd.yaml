@@ -16,6 +16,7 @@ env:
   DOCKER_IMAGE: ${{ secrets.DOCKER_USERNAME }}/starttech-api
   PROJECT_NAME: ${{ secrets.PROJECT_NAME }}
   MONGO_URI: ${{ secrets.MONGO_URI }}
+  DB_NAME: muchtodo-db
 
 jobs:
   test:
@@ -72,6 +73,14 @@ jobs:
             ${{ env.DOCKER_IMAGE }}:${{ github.sha }}
             ${{ env.DOCKER_IMAGE }}:latest
 
+      - name: Scan pushed Docker image with Trivy
+        uses: aquasecurity/trivy-action@0.20.0
+        with:
+          image-ref: ${{ env.DOCKER_IMAGE }}:${{ github.sha }}
+          format: table
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+
   deploy:
     name: Deploy to EC2
     runs-on: ubuntu-latest
@@ -99,8 +108,7 @@ jobs:
 
       - name: Deploy to each instance
         run: |
-          INSTANCES=(${{ steps.instances.outputs.instances }})
-          
+          INSTANCES=(${{ steps.instances.outputs.instances }})          
           for INSTANCE_ID in "${INSTANCES[@]}"; do
             echo "Deploying to $INSTANCE_ID"
             
@@ -110,10 +118,26 @@ jobs:
               --parameters 'commands=[
                 "echo ${{ env.DOCKER_PASSWORD }} | docker login -u ${{ env.DOCKER_USERNAME }} --password-stdin",
                 "docker pull ${{ env.DOCKER_IMAGE }}:latest",
+
                 "docker stop starttech-app 2>/dev/null || true",
                 "docker rm starttech-app 2>/dev/null || true",
+                
                 "docker network create muchtodo-app 2>/dev/null || true",
-                "docker run -d --name starttech-app --network muchtodo-app --restart unless-stopped -p 8080:8080 -e MONGO_URI=${{ env.MONGO_URI }} -e DB_NAME=muchtodo-db ${{ env.DOCKER_IMAGE }}:latest",
+
+                "docker run -d \
+                --name starttech-app \
+                --network muchtodo-app \
+                --restart unless-stopped \
+                -p 8080:8080 \
+                -e MONGO_URI=${{ env.MONGO_URI }} \
+                -e DB_NAME=${{ env.DB_NAME }} \
+                --log-driver awslogs \
+                --log-opt awslogs-region=${{ env.AWS_REGION }} \
+                --log-opt awslogs-group=/${{ env.PROJECT_NAME }}/backend \
+                --log-opt awslogs-stream=$INSTANCE_ID/${{ env.PROJECT_NAME }} \
+                --log-opt awslogs-create-group=false \
+                ${{ env.DOCKER_IMAGE }}:latest",
+
                 "sudo rm -f /etc/nginx/sites-enabled/default",
                 "echo \"server { listen 80; location / { proxy_pass http://127.0.0.1:8080; } }\" | sudo tee /etc/nginx/sites-available/backend",
                 "sudo ln -sf /etc/nginx/sites-available/backend /etc/nginx/sites-enabled/backend",
